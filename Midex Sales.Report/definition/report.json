@@ -1,0 +1,142 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/report/3.3.0/schema.json",
+  "themeCollection": {
+    "baseTheme": {
+      "name": "CY26SU04",
+      "reportVersionAtImport": {
+        "visual": "2.8.0",
+        "report": "3.2.0",
+        "page": "2.3.1"
+      },
+      "type": "SharedResources"
+    },
+    "customTheme": {
+      "name": "AccessibleDefault",
+      "reportVersionAtImport": {
+        "visual": "2.8.0",
+        "report": "3.2.0",
+        "page": "2.3.1"
+      },
+      "type": "SharedResources"
+    }
+  },
+  "objects": {
+    "section": [
+      {
+        "properties": {
+          "verticalAlignment": {
+            "expr": {
+              "Literal": {
+                "Value": "'Top'"
+              }
+            }
+          }
+        }
+      }
+    ],
+    "outspacePane": [
+      {
+        "properties": {
+          "expanded": {
+            "expr": {
+              "Literal": {
+                "Value": "false"
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "publicCustomVisuals": [
+    "Multi_target_KPI",
+    "BulletChart832EC06300814F26921DEFC2DE8606BE"
+  ],
+  "resourcePackages": [
+    {
+      "name": "SharedResources",
+      "type": "SharedResources",
+      "items": [
+        {
+          "name": "AccessibleDefault",
+          "path": "BuiltInThemes/AccessibleDefault.json",
+          "type": "CustomTheme"
+        },
+        {
+          "name": "CY26SU04",
+          "path": "BaseThemes/CY26SU04.json",
+          "type": "BaseTheme"
+        }
+      ]
+    },
+    {
+      "name": "RegisteredResources",
+      "type": "RegisteredResources",
+      "items": [
+        {
+          "name": "ChatGPT_Image_24_____._2026__.27396355522382543.png",
+          "path": "ChatGPT_Image_24_____._2026__.27396355522382543.png",
+          "type": "Image"
+        },
+        {
+          "name": "direct-marketing5410281885938041.png",
+          "path": "direct-marketing5410281885938041.png",
+          "type": "Image"
+        },
+        {
+          "name": "handshake0772404755260856.png",
+          "path": "handshake0772404755260856.png",
+          "type": "Image"
+        },
+        {
+          "name": "manifest15749164496807344.png",
+          "path": "manifest15749164496807344.png",
+          "type": "Image"
+        },
+        {
+          "name": "medal7700929249182176.png",
+          "path": "medal7700929249182176.png",
+          "type": "Image"
+        },
+        {
+          "name": "orig617019092452221.webp",
+          "path": "orig617019092452221.webp",
+          "type": "Image"
+        },
+        {
+          "name": "sales45727355318220275.png",
+          "path": "sales45727355318220275.png",
+          "type": "Image"
+        },
+        {
+          "name": "score040538458183736914.png",
+          "path": "score040538458183736914.png",
+          "type": "Image"
+        },
+        {
+          "name": "store9483891622978554.png",
+          "path": "store9483891622978554.png",
+          "type": "Image"
+        },
+        {
+          "name": "trophy27765492230688305.png",
+          "path": "trophy27765492230688305.png",
+          "type": "Image"
+        },
+        {
+          "name": "trophy4001385290582219.png",
+          "path": "trophy4001385290582219.png",
+          "type": "Image"
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "useStylableVisualContainerHeader": true,
+    "exportDataMode": "AllowSummarized",
+    "defaultDrillFilterOtherVisuals": true,
+    "allowChangeFilterTypes": true,
+    "useEnhancedTooltips": true,
+    "useDefaultAggregateDisplayName": true
+  }
+}

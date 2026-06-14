@@ -1,0 +1,358 @@
+table 'Dim Product'
+	lineageTag: 75bbb62e-2efe-43b9-864f-98182119e8f5
+
+	column ProductID
+		dataType: string
+		lineageTag: b3b7d503-d9ee-469f-9610-35bcd43e7aaf
+		summarizeBy: none
+		sourceColumn: ProductID
+
+		annotation SummarizationSetBy = Automatic
+
+	column ProductName
+		dataType: string
+		lineageTag: 5a8cad6d-89e5-40e3-b85a-abfa7feeb198
+		summarizeBy: none
+		sourceColumn: ProductName
+
+		annotation SummarizationSetBy = Automatic
+
+	column CategoryID
+		dataType: string
+		lineageTag: 46361f86-1498-4ab6-a96a-cbe9cf869daa
+		summarizeBy: none
+		sourceColumn: CategoryID
+
+		annotation SummarizationSetBy = Automatic
+
+	column BuyPrice
+		dataType: double
+		lineageTag: 6b744d9c-29d6-484e-aed6-04163adb03e0
+		summarizeBy: sum
+		sourceColumn: BuyPrice
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column BuyCurrency
+		dataType: string
+		lineageTag: 7adfdf4f-018d-47a4-a783-c500fca29ea4
+		summarizeBy: none
+		sourceColumn: BuyCurrency
+
+		annotation SummarizationSetBy = Automatic
+
+	column SalePrice
+		dataType: double
+		lineageTag: e7b1c75f-4500-475b-885d-84c3d645a936
+		summarizeBy: sum
+		sourceColumn: SalePrice
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column SaleCurrency
+		dataType: string
+		lineageTag: 4d179dfa-94da-4a68-a357-45318a603d44
+		summarizeBy: none
+		sourceColumn: SaleCurrency
+
+		annotation SummarizationSetBy = Automatic
+
+	column UOM
+		dataType: string
+		lineageTag: 761f5ffc-58f2-4ed6-b7f0-6dd9a14a6305
+		summarizeBy: none
+		sourceColumn: UOM
+
+		annotation SummarizationSetBy = Automatic
+
+	column BuyPrice_USD
+		dataType: double
+		lineageTag: 8f5901a0-887b-4bd7-94d0-0da2cdfb308e
+		summarizeBy: sum
+		sourceColumn: BuyPrice_USD
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column SalePrice_USD
+		dataType: double
+		lineageTag: 748450db-fa8f-4cf7-903e-74046d79eabd
+		summarizeBy: sum
+		sourceColumn: SalePrice_USD
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition 'Dim Product' = m
+		mode: import
+		source = ```
+				let
+				    Limit = 1000,
+				
+				    GetPage = (offset as number) =>
+				        Json.Document(
+				            Web.Contents(
+				                "https://api.moysklad.ru",
+				                [
+				                    RelativePath =
+				                        "api/remap/1.2/entity/product?limit="
+				                        & Text.From(Limit)
+				                        & "&offset="
+				                        & Text.From(offset),
+				                    Headers = [
+				                        Authorization = "Bearer 2297a1646c10f892e749da87f1c58d64b442f688"
+				                    ]
+				                ]
+				            )
+				        ),
+				
+				    FirstPage = GetPage(0),
+				    Total = FirstPage[meta][size],
+				
+				    Offsets = List.Generate(
+				        () => 0,
+				        each _ < Total,
+				        each _ + Limit
+				    ),
+				
+				    Pages = List.Transform(Offsets, each GetPage(_)[rows]),
+				    Combined = List.Combine(Pages),
+				
+				    ToTable =
+				        Table.FromList(
+				            Combined,
+				            Splitter.SplitByNothing(),
+				            null,
+				            null,
+				            ExtraValues.Error
+				        ),
+				
+				    Expanded =
+				        Table.ExpandRecordColumn(
+				            ToTable,
+				            "Column1",
+				            {
+				                "id",
+				                "name",
+				                "buyPrice",
+				                "salePrices",
+				                "uom",
+				                "productFolder",
+				                "archived"
+				            },
+				            {
+				                "ProductID",
+				                "ProductName",
+				                "BuyPrice",
+				                "SalePrices",
+				                "UOM",
+				                "Category",
+				                "IsArchived"
+				            }
+				        ),
+				
+				    ActiveProducts =
+				        Table.SelectRows(Expanded, each [IsArchived] <> true),
+				
+				    //-----------------------------------
+				    // BUY PRICE
+				    //-----------------------------------
+				    ExpandBuyPrice =
+				        Table.ExpandRecordColumn(
+				            ActiveProducts,
+				            "BuyPrice",
+				            {"value", "currency"},
+				            {"BuyPriceRaw", "BuyCurrencyRec"}
+				        ),
+				
+				    BuyPriceConverted =
+				        Table.TransformColumns(
+				            ExpandBuyPrice,
+				            {{"BuyPriceRaw", each _ / 100, type number}}
+				        ),
+				
+				    ExpandBuyCurrencyMeta =
+				        Table.ExpandRecordColumn(
+				            BuyPriceConverted,
+				            "BuyCurrencyRec",
+				            {"meta"},
+				            {"BuyCurrencyMeta"}
+				        ),
+				
+				    ExpandBuyCurrencyHref =
+				        Table.ExpandRecordColumn(
+				            ExpandBuyCurrencyMeta,
+				            "BuyCurrencyMeta",
+				            {"href"},
+				            {"BuyCurrencyHref"}
+				        ),
+				
+				    ExtractBuyCurrency =
+				        Table.TransformColumns(
+				            ExpandBuyCurrencyHref,
+				            {{"BuyCurrencyHref", each Text.AfterDelimiter(_, "currency/"), type text}}
+				        ),
+				
+				    //-----------------------------------
+				    // SALE PRICE (birinchi narx)
+				    //-----------------------------------
+				    ExpandSaleList =
+				        Table.ExpandListColumn(
+				            ExtractBuyCurrency,
+				            "SalePrices"
+				        ),
+				
+				    ExpandSaleRecord =
+				        Table.ExpandRecordColumn(
+				            ExpandSaleList,
+				            "SalePrices",
+				            {"value", "currency"},
+				            {"SalePriceRaw", "SaleCurrencyRec"}
+				        ),
+				
+				    SalePriceConverted =
+				        Table.TransformColumns(
+				            ExpandSaleRecord,
+				            {{"SalePriceRaw", each _ / 100, type number}}
+				        ),
+				
+				    ExpandSaleCurrencyMeta =
+				        Table.ExpandRecordColumn(
+				            SalePriceConverted,
+				            "SaleCurrencyRec",
+				            {"meta"},
+				            {"SaleCurrencyMeta"}
+				        ),
+				
+				    ExpandSaleCurrencyHref =
+				        Table.ExpandRecordColumn(
+				            ExpandSaleCurrencyMeta,
+				            "SaleCurrencyMeta",
+				            {"href"},
+				            {"SaleCurrencyHref"}
+				        ),
+				
+				    ExtractSaleCurrency =
+				        Table.TransformColumns(
+				            ExpandSaleCurrencyHref,
+				            {{"SaleCurrencyHref", each Text.AfterDelimiter(_, "currency/"), type text}}
+				        ),//-----------------------------------
+				    // CATEGORY
+				    //-----------------------------------
+				    ExpandCategoryMeta =
+				        Table.ExpandRecordColumn(
+				            ExtractSaleCurrency,
+				            "Category",
+				            {"meta"},
+				            {"CategoryMeta"}
+				        ),
+				
+				    ExpandCategoryHref =
+				        Table.ExpandRecordColumn(
+				            ExpandCategoryMeta,
+				            "CategoryMeta",
+				            {"href"},
+				            {"CategoryHref"}
+				        ),
+				
+				    ExtractCategoryID =
+				        Table.TransformColumns(
+				            ExpandCategoryHref,
+				            {{"CategoryHref", each Text.AfterDelimiter(_, "productfolder/"), type text}}
+				        ),
+				
+				    //-----------------------------------
+				    // UOM
+				    //-----------------------------------
+				    ExpandUOMMeta =
+				        Table.ExpandRecordColumn(
+				            ExtractCategoryID,
+				            "UOM",
+				            {"meta"},
+				            {"UOMMeta"}
+				        ),
+				
+				    ExpandUOMHref =
+				        Table.ExpandRecordColumn(
+				            ExpandUOMMeta,
+				            "UOMMeta",
+				            {"href"},
+				            {"UOMHref"}
+				        ),
+				
+				    ExtractUOM =
+				        Table.TransformColumns(
+				            ExpandUOMHref,
+				            {{"UOMHref", each Text.AfterDelimiter(_, "uom/"), type text}}
+				        ),
+				
+				    //-----------------------------------
+				    // FINAL SELECT
+				    //-----------------------------------
+				    Final =
+				        Table.SelectColumns(
+				            ExtractUOM,
+				            {
+				                "ProductID",
+				                "ProductName",
+				                "CategoryHref",
+				                "BuyPriceRaw",
+				                "BuyCurrencyHref",
+				                "SalePriceRaw",
+				                "SaleCurrencyHref",
+				                "UOMHref"
+				            }
+				        ),
+				
+				    Renamed =
+				        Table.RenameColumns(
+				            Final,
+				            {
+				                {"CategoryHref", "CategoryID"},
+				                {"BuyPriceRaw", "BuyPrice"},
+				                {"BuyCurrencyHref", "BuyCurrency"},
+				                {"SalePriceRaw", "SalePrice"},
+				                {"SaleCurrencyHref", "SaleCurrency"},
+				                {"UOMHref", "UOM"}
+				            }
+				        ),
+				        USD_Rate = 12200,
+				
+				AddedBuyUSD =
+				    Table.AddColumn(
+				        Renamed,
+				        "BuyPrice_USD",
+				        each 
+				            if [BuyCurrency] = "42616812-e3fe-11ec-0a80-04b5002e0601"
+				            then [BuyPrice]
+				            else [BuyPrice] / USD_Rate,
+				        type number
+				    ),
+				
+				AddedSaleUSD =
+				    Table.AddColumn(
+				        AddedBuyUSD,
+				        "SalePrice_USD",
+				        each 
+				            if [SaleCurrency] = "42616812-e3fe-11ec-0a80-04b5002e0601"
+				            then [SalePrice]
+				            else [SalePrice] / USD_Rate,
+				        type number
+				    ),
+				    #"Changed Type" = Table.TransformColumnTypes(AddedSaleUSD,{{"BuyPrice_USD", type number}, {"SalePrice_USD", type number}})
+				
+				
+				in
+				    #"Changed Type"
+				```
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

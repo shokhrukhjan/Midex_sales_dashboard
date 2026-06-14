@@ -1,0 +1,75 @@
+table 'Store Page measures'
+	lineageTag: 11ffa3fd-8602-4e7c-ab1b-b53451cc2c7c
+
+	measure 'Топ Категория' = ```
+			
+			VAR TopCategory = 
+			    TOPN(
+			        1, 
+			        FILTER(VALUES('Dim Category'[CategoryName]), 'Dim Category'[CategoryName] <> BLANK()), 
+			        [Total Fact Orders], 
+			        DESC
+			    )
+			VAR TopName = MAXX(TopCategory, 'Dim Category'[CategoryName])
+			
+			RETURN 
+			IF(ISBLANK(TopName), "Kategoriya topilmadi", "🏆 " & TopName)
+			```
+		lineageTag: 3fa4169e-3869-4c0d-9046-ffc436820fab
+
+	measure 'Sales over the last 90 days.' = ```
+			
+			CALCULATE(
+			    [Total Fact Orders], 
+			    DATESINPERIOD(
+			        'Calendar'[Date], 
+			        MAX('Calendar'[Date]), 
+			        -90, 
+			        DAY
+			    )
+			)
+			```
+		formatString: 0
+		lineageTag: 2b0b44ef-c828-4fea-9f65-5f15ea15925b
+
+	measure 'Run Rate (days)' = ```
+			
+			VAR Sales90Days = [Sales over the last 90 days.]
+			VAR DailySales = DIVIDE(Sales90Days, 90, 0) 
+			VAR CurrentStock = SUM('Fact Store'[Available_Stock])
+			
+			RETURN 
+			IF(
+			    CurrentStock <= 0, 
+			    0, 
+			    IF(
+			        DailySales > 0, 
+			        DIVIDE(CurrentStock, DailySales), 
+			        BLANK() 
+			    )
+			)
+			```
+		formatString: 0
+		lineageTag: b92f0979-6bd5-461a-8edf-4f97eef65bc9
+
+		annotation PBI_FormatHint = {"isDecimal":true}
+
+	column Column1
+		dataType: string
+		lineageTag: 54583228-0685-4ae8-b163-c8c6703240e3
+		summarizeBy: none
+		sourceColumn: Column1
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Store Page measures' = m
+		mode: import
+		source =
+				let
+				    Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i44FAA==", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [Column1 = _t]),
+				    #"Changed Type" = Table.TransformColumnTypes(Source,{{"Column1", type text}})
+				in
+				    #"Changed Type"
+
+	annotation PBI_ResultType = Table
+

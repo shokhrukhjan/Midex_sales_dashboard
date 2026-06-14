@@ -1,0 +1,97 @@
+table 'Dim Category'
+	lineageTag: 746a0cde-a26c-4f7a-bf90-a2c7164581da
+
+	column CategoryID
+		dataType: string
+		lineageTag: 5f786f77-e148-4012-b971-4d94a8c2d38e
+		summarizeBy: none
+		sourceColumn: CategoryID
+
+		annotation SummarizationSetBy = Automatic
+
+	column CategoryName
+		dataType: string
+		lineageTag: 25c52603-dc7d-45a5-a260-88a1564bb5d2
+		summarizeBy: none
+		sourceColumn: CategoryName
+
+		annotation SummarizationSetBy = Automatic
+
+	column CategoryPath
+		dataType: string
+		lineageTag: 1c42236a-3297-4cf6-ae40-5939dd459a2a
+		summarizeBy: none
+		sourceColumn: CategoryPath
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Dim Category' = m
+		mode: import
+		source =
+				let
+				    Limit = 1000,
+				
+				    GetPage = (offset as number) =>
+				        Json.Document(
+				            Web.Contents(
+				                "https://api.moysklad.ru",
+				                [
+				                    RelativePath =
+				                        "api/remap/1.2/entity/productfolder?limit="
+				                        & Text.From(Limit)
+				                        & "&offset="
+				                        & Text.From(offset),
+				                    Headers = [
+				                        Authorization = "Bearer 2297a1646c10f892e749da87f1c58d64b442f688"
+				                    ]
+				                ]
+				            )
+				        ),
+				
+				    FirstPage = GetPage(0),
+				    Total = FirstPage[meta][size],
+				
+				    Offsets = List.Generate(
+				        () => 0,
+				        each _ < Total,
+				        each _ + Limit
+				    ),
+				
+				    Pages = List.Transform(Offsets, each GetPage(_)[rows]),
+				    Combined = List.Combine(Pages),
+				
+				    ToTable = Table.FromList(Combined, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+				
+				    Expanded = Table.ExpandRecordColumn(
+				        ToTable,
+				        "Column1",
+				        {"id", "name", "archived", "pathName"},
+				        {"CategoryID", "CategoryName", "IsArchived", "CategoryPath"}
+				    ),
+				
+				    ActiveCategories =
+				        Table.SelectRows(Expanded, each [IsArchived] <> true),
+				
+				    ChangedType =
+				        Table.TransformColumnTypes(
+				            ActiveCategories,
+				            {
+				                {"CategoryID", type text},
+				                {"CategoryName", type text},
+				                {"CategoryPath", type text}
+				            }
+				        ),
+				
+				    FinalColumns =
+				        Table.SelectColumns(
+				            ChangedType,
+				            {"CategoryID", "CategoryName", "CategoryPath"}
+				        )
+				
+				in
+				    FinalColumns
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

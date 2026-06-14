@@ -1,0 +1,197 @@
+table 'Fact Store'
+	lineageTag: 8a8e64fc-08a0-4891-8818-1dd7f394df30
+
+	column ProductID
+		dataType: string
+		lineageTag: 96b964f7-973b-4efb-b9af-b25e0039276f
+		summarizeBy: none
+		sourceColumn: ProductID
+
+		annotation SummarizationSetBy = Automatic
+
+	column StoreID
+		dataType: string
+		lineageTag: 353af9e2-a599-4e90-a7a5-0019b9d3e8a5
+		summarizeBy: none
+		sourceColumn: StoreID
+
+		annotation SummarizationSetBy = Automatic
+
+	column Available_Stock
+		dataType: int64
+		formatString: 0
+		lineageTag: ec8dabfc-29a1-48fc-b1dc-8595ad65b87c
+		summarizeBy: sum
+		sourceColumn: Available_Stock
+
+		changedProperty = SortByColumn
+
+		changedProperty = DataType
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Fact Store' = m
+		mode: import
+		source =
+				let
+				    Limit = 1000,
+				
+				    GetPage = (offset as number) =>
+				        Json.Document(
+				            Web.Contents(
+				                "https://api.moysklad.ru/api/remap/1.2/report/stock/bystore",
+				                [
+				                    Query = [
+				                        limit = Text.From(Limit),
+				                        offset = Text.From(offset)
+				                    ],
+				                    Headers = [
+				                        Authorization = "Bearer 2297a1646c10f892e749da87f1c58d64b442f688"
+				                    ]
+				                ]
+				            )
+				        ),
+				
+				    FirstPage = GetPage(0),
+				    Total = FirstPage[meta][size],
+				
+				    Offsets = List.Generate(
+				        () => 0,
+				        each _ < Total,
+				        each _ + Limit
+				    ),
+				
+				    Pages = List.Transform(Offsets, each GetPage(_)[rows]),
+				    Combined = List.Combine(Pages),
+				
+				    //-----------------------------------
+				    // LIST → TABLE
+				    //-----------------------------------
+				    ToTable = Table.FromRecords(Combined),
+				
+				    //-----------------------------------
+				    // EXPAND stockByStore
+				    //-----------------------------------
+				    #"Expanded stockByStore" =
+				        Table.ExpandListColumn(ToTable, "stockByStore"),
+				
+				    #"Expanded stockByStore1" =
+				        Table.ExpandRecordColumn(
+				            #"Expanded stockByStore",
+				            "stockByStore",
+				            {"meta", "name", "stock", "reserve", "inTransit", "uom"},
+				            {
+				                "stockByStore.meta",
+				                "stockByStore.name",
+				                "stockByStore.stock",
+				                "stockByStore.reserve",
+				                "stockByStore.inTransit",
+				                "stockByStore.uom"
+				            }
+				        ),
+				
+				    //-----------------------------------
+				    // STORE ID
+				    //-----------------------------------
+				    #"Expanded stockByStore.meta" =
+				        Table.ExpandRecordColumn(
+				            #"Expanded stockByStore1",
+				            "stockByStore.meta",
+				            {"href"},
+				            {"StoreHref"}
+				        ),
+				
+				    #"StoreID Extract" =
+				        Table.TransformColumns(
+				            #"Expanded stockByStore.meta",
+				            {{"StoreHref", each Text.AfterDelimiter(_, "store/"), type text}}
+				        ),
+				
+				    //-----------------------------------
+				    // PRODUCT ID
+				    //-----------------------------------
+				    #"Expanded meta" =
+				        Table.ExpandRecordColumn(
+				            #"StoreID Extract",
+				            "meta",
+				            {"href"},
+				            {"ProductHref"}
+				        ),
+				
+				    #"ProductID Extract" =
+				        Table.TransformColumns(
+				            #"Expanded meta",
+				            {{"ProductHref", each Text.AfterDelimiter(_, "product/"), type text}}
+				        ),
+				
+				    #"ProductID Clean" =
+				        Table.TransformColumns(
+				            #"ProductID Extract",
+				            {{"ProductHref", each Text.BeforeDelimiter(_, "?expand"), type text}}
+				        ),
+				
+				    //-----------------------------------
+				    // UOM ID (agar mavjud bo‘lsa)
+				    //-----------------------------------
+				    #"Expanded UOM" =
+				        Table.ExpandRecordColumn(
+				            #"ProductID Clean",
+				            "stockByStore.uom",
+				            {"meta"},
+				            {"UOMMeta"}
+				        ),
+				
+				    #"Expanded UOM Meta" =
+				        Table.ExpandRecordColumn(
+				            #"Expanded UOM",
+				            "UOMMeta",
+				            {"href"},
+				            {"UOMHref"}
+				        ),
+				
+				    #"UOMID Extract" =
+				        Table.TransformColumns(
+				            #"Expanded UOM Meta",
+				            {{"UOMHref", each Text.AfterDelimiter(_, "uom/"), type text}}
+				        ),
+				
+				    //-----------------------------------
+				    // AVAILABLE STOCK
+				    //-----------------------------------
+				    #"Added Available" =
+				        Table.AddColumn(
+				            #"UOMID Extract",
+				            "Available_Stock",
+				            each [stockByStore.stock] - [stockByStore.reserve]
+				        ),
+				
+				    //-----------------------------------
+				    // FINAL COLUMNS
+				    //-----------------------------------
+				    Final =
+				        Table.SelectColumns(
+				            #"Added Available",
+				            {
+				                "ProductHref",
+				                "StoreHref",
+				                "UOMHref",
+				                "Available_Stock"
+				            }
+				        ),#"Renamed Columns" =
+				        Table.RenameColumns(
+				            Final,
+				            {
+				                {"ProductHref", "ProductID"},
+				                {"StoreHref", "StoreID"},
+				                {"UOMHref", "UOMID"}
+				            }
+				        ),
+				    #"Removed Other Columns" = Table.SelectColumns(#"Renamed Columns",{"ProductID", "StoreID", "Available_Stock"})
+				
+				in
+				    #"Removed Other Columns"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

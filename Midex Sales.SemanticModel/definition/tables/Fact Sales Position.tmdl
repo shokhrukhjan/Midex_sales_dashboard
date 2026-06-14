@@ -1,0 +1,192 @@
+table 'Fact Sales Position'
+	lineageTag: 2ee05fd2-f76e-446d-ac5a-24bec311491f
+
+	column DemandID
+		dataType: string
+		lineageTag: 811f43a2-7455-4ec2-8834-7ef1c4392725
+		summarizeBy: none
+		sourceColumn: DemandID
+
+		annotation SummarizationSetBy = Automatic
+
+	column DemandNumber
+		dataType: string
+		lineageTag: 8ebb22fb-0aac-4c0a-b949-9d999d0e8c24
+		summarizeBy: none
+		sourceColumn: DemandNumber
+
+		annotation SummarizationSetBy = Automatic
+
+	column Quantity
+		dataType: double
+		lineageTag: 7e403ad3-61b9-40d7-b60f-e56c56bc5b48
+		summarizeBy: sum
+		sourceColumn: Quantity
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column ProductID
+		dataType: string
+		lineageTag: d3e0fe2f-5955-4fbb-b4b5-2ed3949f0f12
+		summarizeBy: none
+		sourceColumn: ProductID
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Fact Sales Position' = m
+		mode: import
+		source =
+				let
+				    Limit = 1000,
+				
+				    GetDemandPage = (offset as number) =>
+				        Json.Document(
+				            Web.Contents(
+				                "https://api.moysklad.ru",
+				                [
+				                    RelativePath =
+				                        "api/remap/1.2/entity/demand?limit="
+				                        & Text.From(Limit)
+				                        & "&offset="
+				                        & Text.From(offset),
+				                    Headers = [
+				                        Authorization = "Bearer 2297a1646c10f892e749da87f1c58d64b442f688"
+				                    ]
+				                ]
+				            )
+				        ),
+				
+				    FirstPage = GetDemandPage(0),
+				    Total = FirstPage[meta][size],
+				
+				    Offsets =
+				        List.Generate(
+				            () => 0,
+				            each _ < Total,
+				            each _ + Limit
+				        ),
+				
+				    DemandPages =
+				        List.Transform(
+				            Offsets,
+				            each GetDemandPage(_)[rows]
+				        ),
+				
+				    Demands =
+				        List.Combine(DemandPages),
+				
+				    DemandTable =
+				        Table.FromList(
+				            Demands,
+				            Splitter.SplitByNothing(),
+				            null,
+				            null,
+				            ExtraValues.Error
+				        ),
+				
+				    #"Expanded Demand" =
+				        Table.ExpandRecordColumn(
+				            DemandTable,
+				            "Column1",
+				            {"id", "name", "moment"},
+				            {"DemandID", "DemandNumber", "DemandDate"}
+				        ),
+				
+				    GetPositions = (DemandID as text) =>
+				        Json.Document(
+				            Web.Contents(
+				                "https://api.moysklad.ru",
+				                [
+				                    RelativePath =
+				                        "api/remap/1.2/entity/demand/"
+				                        & DemandID
+				                        & "/positions",
+				                    Headers = [
+				                        Authorization = "Bearer 2297a1646c10f892e749da87f1c58d64b442f688"
+				                    ]
+				                ]
+				            )
+				        )[rows],
+				
+				    #"Added Positions" =
+				        Table.AddColumn(
+				            #"Expanded Demand",
+				            "Positions",
+				            each GetPositions([DemandID])
+				        ),
+				
+				    #"Expanded Positions" =
+				        Table.ExpandListColumn(
+				            #"Added Positions",
+				            "Positions"
+				        ),
+				
+				    #"Expanded Position Fields" =
+				        Table.ExpandRecordColumn(
+				            #"Expanded Positions",
+				            "Positions",
+				            {"quantity", "price", "assortment"},
+				            {"Quantity", "Price", "Assortment"}
+				        ),
+				
+				    #"Expanded Product" =
+				        Table.ExpandRecordColumn(
+				            #"Expanded Position Fields",
+				            "Assortment",
+				            {"meta"},
+				            {"ProductMeta"}
+				        ),
+				
+				    #"Expanded ProductMeta" =
+				        Table.ExpandRecordColumn(
+				            #"Expanded Product",
+				            "ProductMeta",
+				            {"href"},
+				            {"ProductHref"}
+				        ),
+				
+				    #"Extract ProductID" =
+				        Table.TransformColumns(
+				            #"Expanded ProductMeta",
+				            {
+				                {"ProductHref", each Text.AfterDelimiter(_, "product/"), type text}
+				            }
+				        ),
+				
+				    #"Renamed Columns" =
+				        Table.RenameColumns(
+				            #"Extract ProductID",
+				            {
+				                {"ProductHref", "ProductID"},
+				                {"Price", "Price_raw"}
+				            }
+				        ),
+				
+				    #"Added Sales" =
+				        Table.AddColumn(
+				            #"Renamed Columns",
+				            "Sales",
+				            each ([Price_raw] / 100) * [Quantity],
+				            type number
+				        ),
+				
+				    #"Changed Type" =
+				        Table.TransformColumnTypes(
+				            #"Added Sales",
+				            {
+				                {"DemandDate", type date},
+				                {"Quantity", type number},
+				                {"Sales", type number}
+				            }
+				        ),
+				    #"Removed Other Columns" = Table.SelectColumns(#"Changed Type",{"DemandID", "DemandNumber", "Quantity", "ProductID"})
+				
+				in
+				    #"Removed Other Columns"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

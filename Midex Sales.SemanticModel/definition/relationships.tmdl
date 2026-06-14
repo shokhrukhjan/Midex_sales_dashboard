@@ -1,0 +1,74 @@
+relationship AutoDetected_7cdf7947-91c0-43c0-a11d-7e3b8f2d6d3a
+	fromColumn: Fact_Orders_Position.OrderID
+	toColumn: 'Fact Orders'.OrderID
+
+relationship AutoDetected_664a06ed-70d8-48ab-af86-d7f2caf83116
+	fromColumn: 'Fact Orders'.EmployeeID
+	toColumn: 'Dim Employees'.EmployeeID
+
+relationship AutoDetected_628db022-5374-4db9-aebe-246d389a720f
+	fromColumn: 'Fact Sales'.EmployeeID
+	toColumn: 'Dim Employees'.EmployeeID
+
+relationship AutoDetected_f5faf523-835f-4c6f-b70b-26c08dd31197
+	fromColumn: 'Fact Store'.StoreID
+	toColumn: 'Dim Store'.StoreID
+
+relationship AutoDetected_9b0e5f19-1986-4518-81e0-1a49e66952ff
+	fromColumn: 'Fact Sales'.StoreID
+	toColumn: 'Dim Store'.StoreID
+
+relationship AutoDetected_dc70c1d7-5fb8-4e9a-9672-ade8da2a01f5
+	fromColumn: 'Fact Orders'.CustomerID
+	toColumn: 'Dim Customer'.CustomerID
+
+relationship AutoDetected_01bfcea5-ffba-48e5-9472-3937cf99ced0
+	fromColumn: 'Fact Sales'.CustomerID
+	toColumn: 'Dim Customer'.CustomerID
+
+relationship AutoDetected_d5dbeac9-7415-4885-9c42-3a724566861a
+	crossFilteringBehavior: bothDirections
+	fromColumn: 'Fact Store'.ProductID
+	toColumn: 'Dim Product'.ProductID
+
+relationship AutoDetected_a58e8716-a5c6-4e2a-9258-9f54aa367486
+	fromColumn: 'Dim Product'.UOM
+	toColumn: 'Dim UOM'.UOM_ID
+
+relationship 1e50ea93-50db-e7db-b449-a01ccf3457b0
+	fromColumn: 'Fact Sales Position'.ProductID
+	toColumn: 'Dim Product'.ProductID
+
+relationship 0da2d4a1-d84b-1638-caa9-1f397f2acce0
+	fromColumn: 'Dim Product'.CategoryID
+	toColumn: 'Dim Category'.CategoryID
+
+relationship 03902fb8-5352-11ba-a688-fd2221d60628
+	fromColumn: 'Fact Sales'.ShipmentDate
+	toColumn: Calendar.Date
+
+relationship eb9e64d9-2e2e-a880-cf4b-606d0c804f25
+	fromColumn: 'Fact Orders'.OrderDate
+	toColumn: Calendar.Date
+
+relationship 68e8b6e9-3fa1-2ca0-57d6-159bee3cdb2b
+	fromColumn: Fact_Plans.Year_Month
+	toColumn: Calendar.Date
+
+relationship f618120d-e859-e9f8-3bdf-362b723527cf
+	fromColumn: Fact_Plans.Store_ID
+	toColumn: 'Dim Store'.StoreID
+
+relationship c436890b-4a6e-9401-650a-dadacebc8257
+	fromColumn: 'Fact Orders'.StoreID
+	toColumn: 'Dim Store'.StoreID
+
+relationship 52f7ef56-3467-9c13-6b2c-47dbfd2f1cdc
+	crossFilteringBehavior: bothDirections
+	fromColumn: 'Fact Sales Position'.DemandID
+	toColumn: 'Fact Sales'.ShipmentID
+
+relationship f75da8bb-270f-4866-3ea3-1d764be6b585
+	fromColumn: Fact_Orders_Position.ProductID
+	toColumn: 'Dim Product'.ProductID
+

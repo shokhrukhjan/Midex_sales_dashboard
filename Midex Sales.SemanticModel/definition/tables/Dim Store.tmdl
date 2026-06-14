@@ -1,0 +1,175 @@
+table 'Dim Store'
+	lineageTag: 503a5153-b81a-4572-8530-70ae98fe112d
+
+	column StoreID
+		dataType: string
+		lineageTag: 8c5ba6e4-aa55-4407-872c-97670c37eae8
+		summarizeBy: none
+		sourceColumn: StoreID
+
+		annotation SummarizationSetBy = Automatic
+
+	column StoreName
+		dataType: string
+		lineageTag: 52b27efc-8003-405d-96c8-4b6ee107180c
+		summarizeBy: none
+		sourceColumn: StoreName
+
+		annotation SummarizationSetBy = Automatic
+
+	column StoreCode
+		dataType: string
+		lineageTag: ce48a9cb-b0d1-4528-bbc7-36d09f0f4194
+		summarizeBy: none
+		sourceColumn: StoreCode
+
+		annotation SummarizationSetBy = Automatic
+
+	column Address
+		dataType: string
+		lineageTag: 9b435bbb-ecd6-465f-a661-b96c69086a34
+		summarizeBy: none
+		sourceColumn: Address
+
+		annotation SummarizationSetBy = Automatic
+
+	column IsArchived
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: 9a86207d-b051-4b95-8758-2e8eb3c14819
+		summarizeBy: none
+		sourceColumn: IsArchived
+
+		annotation SummarizationSetBy = Automatic
+
+	column CreatedDate
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: d5db2f57-6358-4e5d-81e2-3a847774a1c6
+		summarizeBy: none
+		sourceColumn: CreatedDate
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Manager Name' = ```
+			
+			SWITCH (
+			    'Dim Store'[StoreName],
+			    "Самарканд", "Холбоева И. А.",
+			    "Андижон", "Гавхар А.",
+			    "Кукон", "Дилором Э.",
+			    "Навои", "Мурадхужаева Н.",
+			    "Шахрисабз", "Солиха",
+			    "Нурафшон", "Мурадхужаева Н.",
+			    "Жийдакапа Наманган", "Гавхар А.",
+			    "Саросиё", "Солиха",
+			    "Каракалпак", "Холбоева И. А.",
+			    "Саткак", "Дилором Э.",
+			    "Туракургон Наманган","Гавхар А.",
+			    "Гиждувон", "Малика",
+			    "Денау", "Солиха",
+			    
+			    BLANK() 
+			)
+			```
+		lineageTag: 4b4c2926-11c4-4a8c-b5a4-a3b85622b535
+		summarizeBy: none
+
+		annotation SummarizationSetBy = Automatic
+
+	column Manager_ID =
+			
+			SWITCH (
+			    'Dim Store'[Manager Name],
+			    "Гавхар А.", "de46ea29-f868-11f0-0a80-10950011c479",
+			    "Мурадхужаева Н.", "b126fec4-5b17-11f0-0a80-05a9002c453e",
+			    "Холбоева И. А.", "060d03f0-292d-11ed-0a80-0d6400261d44",
+			    "Дилором Э.", "86089b50-f869-11f0-0a80-14ae00117603",
+			    "Солиха", "fd9fec00-06a3-11ef-0a80-1511002e2922",
+			    "Малика", "eb73b3e2-2f48-11f1-0a80-195d000baa1f",
+			    BLANK()
+			)
+		lineageTag: 68243dc1-117d-4553-8ede-8716bec6a740
+		summarizeBy: none
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Dim Store' = m
+		mode: import
+		source =
+				let
+				    Limit = 1000,
+				
+				    GetPage = (offset as number) =>
+				        Json.Document(
+				            Web.Contents(
+				                "https://api.moysklad.ru",
+				                [
+				                    RelativePath =
+				                        "api/remap/1.2/entity/store?limit="
+				                        & Text.From(Limit)
+				                        & "&offset="
+				                        & Text.From(offset),
+				                    Headers = [
+				                        Authorization = "Bearer 2297a1646c10f892e749da87f1c58d64b442f688"
+				                    ]
+				                ]
+				            )
+				        ),
+				
+				    FirstPage = GetPage(0),
+				    Total = FirstPage[meta][size],
+				
+				    Offsets = List.Generate(
+				        () => 0,
+				        each _ < Total,
+				        each _ + Limit
+				    ),
+				
+				    Pages = List.Transform(Offsets, each GetPage(_)[rows]),
+				    Combined = List.Combine(Pages),
+				
+				    ToTable = Table.FromList(Combined, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+				
+				    Expanded = Table.ExpandRecordColumn(
+				        ToTable,
+				        "Column1",
+				        {
+				            "id",
+				            "name",
+				            "code",
+				            "address",
+				            "archived",
+				            "created"
+				        },
+				        {
+				            "StoreID",
+				            "StoreName",
+				            "StoreCode",
+				            "Address",
+				            "IsArchived",
+				            "CreatedDate"
+				        }
+				    ),
+				
+				    ChangedType = Table.TransformColumnTypes(
+				        Expanded,
+				        {
+				            {"StoreID", type text},
+				            {"StoreName", type text},
+				            {"StoreCode", type text},
+				            {"Address", type text},
+				            {"IsArchived", type logical},
+				            {"CreatedDate", type datetime}
+				        }
+				    ),
+				
+				    ActiveStores = Table.SelectRows(ChangedType, each [IsArchived] <> true)
+				
+				in
+				    ActiveStores
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,310 @@
+table 'Main page Measure Table'
+	lineageTag: a860196c-d038-4abb-9518-918e646f6482
+
+	measure 'Total Sales' =
+			
+			SUM('Fact Sales'[Sum_USD])
+		formatString: 0
+		lineageTag: 1955b7e9-b6a7-4d06-9f53-51f66b0eb034
+
+	measure 'Plan Target' =
+			
+			SUM(Fact_Plans[Target])
+		formatString: 0
+		lineageTag: 17df7c4c-a8d7-44a8-9b18-92e329718854
+
+	measure 'Plan for Gauge %' =
+			
+			DIVIDE([Total Sales],[Plan Target],0)
+		formatString: 0%;-0%;0%
+		lineageTag: c23c90ba-64d4-4b7b-97a8-6a3b62829ec1
+
+	measure 'Lider Store' = ```
+			
+			VAR LiderName = 
+			    MAXX(
+			        TOPN(1, VALUES('Dim Store'[StoreName]), [Plan for Gauge %], DESC),
+			        'Dim Store'[StoreName]
+			    )
+			VAR LiderResult = 
+			    MAXX(
+			        VALUES('Dim Store'[StoreName]), 
+			        [Plan for Gauge %]
+			    )
+			RETURN 
+			    LiderName & ": " & FORMAT(LiderResult, "0%")
+			```
+		lineageTag: e89bf9a4-cb76-45a0-a0a6-22b09dbc02a3
+
+	measure 'Outsider Store' = ```
+			
+			VAR ActiveStores = 
+			    FILTER(
+			        VALUES('Dim Store'[StoreName]), 
+			        NOT ISBLANK([Plan for Gauge %])
+			    )
+			VAR OutsiderRank = 
+			    TOPN(
+			        1, 
+			        ActiveStores, 
+			        [Plan for Gauge %], 
+			        ASC
+			    )
+			
+			VAR OutsiderStore = 
+			    MAXX(OutsiderRank, 'Dim Store'[StoreName])
+			
+			VAR OutsiderResult = 
+			    MAXX(OutsiderRank, [Plan for Gauge %])
+			
+			RETURN 
+			    OutsiderStore & ": " & FORMAT(OutsiderResult, "0%")
+			```
+		lineageTag: d373dd46-33a6-4227-b2b5-6c5bcd479bcd
+
+	measure 'Last Month Sale' = ```
+			
+			CALCULATE(
+			    [Total Sales], 
+			    PREVIOUSMONTH('Calendar'[Date])
+			)
+			```
+		lineageTag: 0ffccd04-321e-45ff-a252-da369c81afa8
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Growth Rate' = ```
+			
+			DIVIDE(
+			    [Total Sales] - [Last Month Sale], 
+			    [Last Month Sale], 
+			    0
+			)
+			```
+		formatString: 0%;-0%;0%
+		lineageTag: db972e83-7139-4b44-8e72-4e1c3f014e75
+
+	measure 'Trend Card' = ```
+			
+			VAR Percentage = [Growth Rate] 
+			VAR TrendIcon = 
+			    IF(
+			        Percentage > 0, "▲ +", 
+			        IF(Percentage < 0, "▼ ", "▬ ")
+			    )
+			RETURN 
+			    "Trend: " & TrendIcon & FORMAT(Percentage, "0.0%")
+			```
+		lineageTag: 07921a88-1a4a-4f61-b65f-19f2b7530e1e
+
+	measure 'Average Daily Sales (last 15 days)' =
+			
+			CALCULATE(
+			    AVERAGEX(VALUES('Calendar'[Date]), [Total Sales]),
+			    DATESINPERIOD('Calendar'[Date], MAX('Fact Sales'[ShipmentDate]), -15, DAY)
+			)
+		lineageTag: f6339930-b3cc-44db-beb5-d0be4234d3e5
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Sales Forecast' = ```
+			
+			VAR LastSalesDate = MAX('Fact Sales'[ShipmentDate])
+			VAR End_Of_Month = EOMONTH(LastSalesDate, 0)
+			VAR RemainingDays = DATEDIFF(LastSalesDate, End_Of_Month, DAY)
+			
+			// If there are days left in the month, add the expected run rate sales, otherwise keep current sales
+			RETURN 
+			IF(
+			    RemainingDays > 0,
+			    [Total Sales] + ([Average Daily Sales (last 15 days)] * RemainingDays),
+			    [Total Sales]
+			)
+			```
+		lineageTag: 5ef6e9f5-f537-4dab-bc6d-a1d9c4fb63a5
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Вып. плана' = DIVIDE([Total Sales], [Plan Target], 0)
+		formatString: 0.00%;-0.00%;0.00%
+		lineageTag: fd7a514f-01b3-4e1a-9432-25cf98502fd9
+
+	measure 'Кол-во заказов' = DISTINCTCOUNT('Fact Orders'[OrderID])
+		formatString: 0
+		lineageTag: 21d2fae7-9b75-435f-809d-9db231043eaf
+
+	measure 'New Clients' = ```
+			
+			CALCULATE(
+			    DISTINCTCOUNT('Fact Sales'[CustomerID]),
+			    FILTER(
+			        VALUES('Fact Sales'[CustomerID]),
+			        VAR FirstPurchaseDate = 
+			            CALCULATE(
+			                MIN('Fact Sales'[ShipmentDate]), 
+			                REMOVEFILTERS('Calendar')
+			            )
+			        RETURN
+			            FirstPurchaseDate >= MIN('Calendar'[Date]) &&
+			            FirstPurchaseDate <= MAX('Calendar'[Date])
+			    )
+			)
+			```
+		formatString: 0
+		lineageTag: fc0c7a44-ed34-491b-9dde-41db3e6025b6
+
+	measure 'Total Fact Orders' =
+			
+			CALCULATE(
+			    DISTINCTCOUNT('Fact Sales'[ShipmentNumber])
+			)
+		formatString: 0
+		lineageTag: 87aa9ee2-ef6b-4403-a872-01e0e7537870
+
+	measure Ball_Plan =
+			
+			VAR PlanPct = [Вып. плана]
+			RETURN
+			IF(
+			    PlanPct >= 1,
+			    40 + ((PlanPct - 1) * 40),
+			    MAX(0, (PlanPct - 0.5) * 80)
+			)
+		lineageTag: ae81a4fa-67d8-4dbb-acc6-c2994fd74a84
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure Ball_Otgruzka =
+			
+			VAR FactOtg = [Total Fact Orders]
+			RETURN
+			IF(
+			    FactOtg > 50,
+			    20 + ((FactOtg - 50) * 0.3),
+			    (FactOtg / 50) * 20
+			)
+		lineageTag: 1f5a5245-e7cc-4d74-b610-2d919599adb9
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure Ball_Order =
+			
+			VAR FactZakaz = [Кол-во заказов]
+			RETURN
+			(FactZakaz / 60) * 20
+		lineageTag: 927bf70c-4b3e-42ae-8a7f-704437228b80
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Общий балл KPI' =
+			
+			[Ball_Plan] + [Ball_Otgruzka] + [Ball_Order] + ([New Clients] * 1)
+		lineageTag: 886ca846-c751-44b7-98ca-59f9eb2f680e
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Top Manager (Card)' = ```
+			
+			VAR TopManagerTable = 
+			    TOPN(
+			        1, 
+			        FILTER(VALUES('Dim Store'[Manager Name]), 'Dim Store'[Manager Name] <> BLANK()), 
+			        [Общий балл KPI], 
+			        DESC
+			    )
+			VAR ManagerName = MAXX(TopManagerTable, 'Dim Store'[Manager Name])
+			VAR MaxScore = MAXX(TopManagerTable, [Общий балл KPI])
+			
+			RETURN
+			ManagerName & ": " & FORMAT(MaxScore, "0")
+			```
+		lineageTag: 0807a3fa-4c83-4304-b6d5-67268f259301
+
+	measure 'Top 1 Manager' = ```
+			
+			VAR Top1Manager = 
+			    TOPN(
+			        1, 
+			        FILTER(VALUES('Dim Store'[Manager Name]), 'Dim Store'[Manager Name] <> BLANK()), 
+			        [Общий балл KPI (Годовой)], 
+			        DESC
+			    )
+			VAR ManagerName = MAXX(Top1Manager, 'Dim Store'[Manager Name])
+			VAR Score = MAXX(Top1Manager, [Общий балл KPI (Годовой)])
+			
+			RETURN 
+			IF(ISBLANK(ManagerName), BLANK(),"👑 " & ManagerName & " - " & FORMAT(Score, "0"))
+			```
+		lineageTag: bc26e0fe-0c24-4966-9463-7824484423a9
+
+	measure 'Общий балл KPI (Годовой)' = ```
+			
+			CALCULATE(
+			    SUMX(
+			        VALUES('Calendar'[Month Short]), 
+			        [Общий балл KPI] 
+			    ),
+			    ALLEXCEPT('Calendar', 'Calendar'[Year]) 
+			)
+			```
+		lineageTag: 051c0aca-bebf-4c46-8786-c10ab826a1ef
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Top 2 Manager' = ```
+			
+			VAR Top2Manager = 
+			    TOPN(
+			        2, 
+			        FILTER(VALUES('Dim Store'[Manager Name]), 'Dim Store'[Manager Name] <> BLANK()), 
+			        [Общий балл KPI (Годовой)], 
+			        DESC
+			    )
+			VAR SecondPlace = 
+			    TOPN(1, Top2Manager, [Общий балл KPI (Годовой)], ASC) 
+			VAR ManagerName = MAXX(SecondPlace, 'Dim Store'[Manager Name])
+			VAR Score = MAXX(SecondPlace, [Общий балл KPI (Годовой)])
+			
+			RETURN 
+			IF(ISBLANK(ManagerName), BLANK(), "🥈 " & ManagerName & " - " & FORMAT(Score, "0"))
+			```
+		lineageTag: 371b3b6f-19c9-4ae5-9663-771641e9f496
+
+	measure 'Top 3 Manager' = ```
+			
+			VAR Top3Manager = 
+			    TOPN(
+			        3, 
+			        FILTER(VALUES('Dim Store'[Manager Name]), 'Dim Store'[Manager Name] <> BLANK()), 
+			        [Общий балл KPI (Годовой)], 
+			        DESC
+			    )
+			VAR ThirdPlace = 
+			    TOPN(1, Top3Manager, [Общий балл KPI (Годовой)], ASC) 
+			VAR ManagerName = MAXX(ThirdPlace, 'Dim Store'[Manager Name])
+			VAR Score = MAXX(ThirdPlace, [Общий балл KPI (Годовой)])
+			
+			RETURN 
+			IF(ISBLANK(ManagerName), BLANK(), "🥉 " & ManagerName & " - " & FORMAT(Score, "0"))
+			```
+		lineageTag: 1dd4c7d7-556c-4c7d-973e-a68800225f9f
+
+	column Column1
+		dataType: string
+		lineageTag: 2b3a4863-e42c-4268-b966-1522c9bc53e4
+		summarizeBy: none
+		sourceColumn: Column1
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Main page Measure Table' = m
+		mode: import
+		source =
+				let
+				    Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i44FAA==", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [Column1 = _t]),
+				    #"Changed Type" = Table.TransformColumnTypes(Source,{{"Column1", type text}})
+				in
+				    #"Changed Type"
+
+	annotation PBI_ResultType = Table
+

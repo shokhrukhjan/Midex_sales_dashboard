@@ -1,0 +1,115 @@
+table 'Dim UOM'
+	lineageTag: 509b0032-fe4c-4024-99ee-01ef5d831965
+
+	column UOM_ID
+		dataType: string
+		lineageTag: 0fdd6f53-cd4b-48df-b67b-d7d8c1edcfae
+		summarizeBy: none
+		sourceColumn: UOM_ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column UOM_Name
+		dataType: string
+		lineageTag: 8f38d654-b918-4f6e-a9fa-b48392420ff9
+		summarizeBy: none
+		sourceColumn: UOM_Name
+
+		annotation SummarizationSetBy = Automatic
+
+	column UOM_Code
+		dataType: string
+		lineageTag: 9322d364-ef44-494e-9a52-1141e0484e08
+		summarizeBy: none
+		sourceColumn: UOM_Code
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Dim UOM' = m
+		mode: import
+		source =
+				let
+				    Limit = 1000,
+				
+				    GetPage = (offset as number) =>
+				        Json.Document(
+				            Web.Contents(
+				                "https://api.moysklad.ru",
+				                [
+				                    RelativePath =
+				                        "api/remap/1.2/entity/uom?limit="
+				                        & Text.From(Limit)
+				                        & "&offset="
+				                        & Text.From(offset),
+				                    Headers = [
+				                        Authorization = "Bearer 2297a1646c10f892e749da87f1c58d64b442f688"
+				                    ]
+				                ]
+				            )
+				        ),
+				
+				    FirstPage = GetPage(0),
+				    Total = FirstPage[meta][size],
+				
+				    Offsets = List.Generate(
+				        () => 0,
+				        each _ < Total,
+				        each _ + Limit
+				    ),
+				
+				    Pages = List.Transform(Offsets, each GetPage(_)[rows]),
+				    Combined = List.Combine(Pages),
+				
+				    ToTable =
+				        Table.FromList(
+				            Combined,
+				            Splitter.SplitByNothing(),
+				            null,
+				            null,
+				            ExtraValues.Error
+				        ),
+				
+				    Expanded =
+				        Table.ExpandRecordColumn(
+				            ToTable,
+				            "Column1",
+				            {
+				                "id",
+				                "name",
+				                "code",
+				                "archived"
+				            },
+				            {
+				                "UOM_ID",
+				                "UOM_Name",
+				                "UOM_Code",
+				                "IsArchived"
+				            }
+				        ),
+				
+				    ActiveUOM =
+				        Table.SelectRows(Expanded, each [IsArchived] <> true),
+				
+				    ChangedType =
+				        Table.TransformColumnTypes(
+				            ActiveUOM,
+				            {
+				                {"UOM_ID", type text},
+				                {"UOM_Name", type text},
+				                {"UOM_Code", type text}
+				            }
+				        ),
+				
+				    Final =
+				        Table.SelectColumns(
+				            ChangedType,
+				            {"UOM_ID", "UOM_Name", "UOM_Code"}
+				        )
+				
+				in
+				    Final
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

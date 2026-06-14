@@ -1,0 +1,286 @@
+table Fact_Orders_Position
+	lineageTag: 04d8338a-8496-4988-bd4a-8857b3c3b4d5
+
+	column OrderID
+		dataType: string
+		lineageTag: b47e1b5d-d292-4cdd-857c-4b81c099e52e
+		summarizeBy: none
+		sourceColumn: OrderID
+
+		annotation SummarizationSetBy = Automatic
+
+	column ProductID
+		dataType: string
+		lineageTag: 7f9f615c-0a00-4180-a480-eacff753fdd5
+		summarizeBy: none
+		sourceColumn: ProductID
+
+		annotation SummarizationSetBy = Automatic
+
+	column Quantity
+		dataType: string
+		lineageTag: 6615585e-6fd2-4b7e-8667-bb917951b234
+		summarizeBy: none
+		sourceColumn: Quantity
+
+		annotation SummarizationSetBy = Automatic
+
+	column UnitPrice
+		dataType: double
+		lineageTag: e9f9a67e-f20a-4a9e-8737-8d18df9135d4
+		summarizeBy: sum
+		sourceColumn: UnitPrice
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column CurrencyID
+		dataType: string
+		lineageTag: 00ba3804-2efa-40d4-97c8-edce725a0b71
+		summarizeBy: none
+		sourceColumn: CurrencyID
+
+		annotation SummarizationSetBy = Automatic
+
+	column LineAmount
+		dataType: double
+		lineageTag: cfc78fa1-01f8-46ac-a6d7-53b2905dba9f
+		summarizeBy: sum
+		sourceColumn: LineAmount
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column UnitPrice_USD
+		dataType: double
+		lineageTag: 2a13cca6-fdaf-44bd-80df-d5a1f9e3be82
+		summarizeBy: sum
+		sourceColumn: UnitPrice_USD
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition Fact_Orders_Position = m
+		mode: import
+		source =
+				let
+				    Token = "Bearer 2297a1646c10f892e749da87f1c58d64b442f688",
+				    Limit = 1000,
+				
+				    //-----------------------------------------
+				    // 1️⃣ CUSTOMER ORDERS
+				    //-----------------------------------------
+				    GetOrders = (offset as number) =>
+				        Json.Document(
+				            Web.Contents(
+				                "https://api.moysklad.ru",
+				                [
+				                    RelativePath =
+				                        "api/remap/1.2/entity/customerorder?limit="
+				                        & Text.From(Limit)
+				                        & "&offset="
+				                        & Text.From(offset),
+				                    Headers = [ Authorization = Token ]
+				                ]
+				            )
+				        ),
+				
+				    FirstPage = GetOrders(0),
+				    Total = FirstPage[meta][size],
+				
+				    Offsets =
+				        List.Generate(
+				            () => 0,
+				            each _ < Total,
+				            each _ + Limit
+				        ),
+				
+				    OrderPages =
+				        List.Transform(Offsets, each GetOrders(_)[rows]),
+				
+				    OrdersCombined = List.Combine(OrderPages),
+				
+				    OrdersTable =
+				        Table.FromList(
+				            OrdersCombined,
+				            Splitter.SplitByNothing(),
+				            null,
+				            null,
+				            ExtraValues.Error
+				        ),
+				
+				    ExpandOrders =
+				        Table.ExpandRecordColumn(
+				            OrdersTable,
+				            "Column1",
+				            {"id"},
+				            {"OrderID"}
+				        ),
+				
+				    //-----------------------------------------
+				    // 2️⃣ POSITIONS
+				    //-----------------------------------------
+				    GetPositions = (OrderID as text) =>
+				        Json.Document(
+				            Web.Contents(
+				                "https://api.moysklad.ru",
+				                [
+				                    RelativePath =
+				                        "api/remap/1.2/entity/customerorder/"
+				                        & OrderID
+				                        & "/positions",
+				                    Headers = [ Authorization = Token ]
+				                ]
+				            )
+				        )[rows],
+				
+				    AddPositions =
+				        Table.AddColumn(
+				            ExpandOrders,
+				            "Positions",
+				            each GetPositions([OrderID])
+				        ),
+				
+				    ExpandPositionsList =
+				        Table.ExpandListColumn(
+				            AddPositions,
+				            "Positions"
+				        ),
+				
+				    ExpandPositions =
+				        Table.ExpandRecordColumn(
+				            ExpandPositionsList,
+				            "Positions",
+				            {"quantity", "price", "assortment"},
+				            {"Quantity", "PriceRaw", "Assortment"}
+				        ),
+				
+				    //-----------------------------------------
+				    // PRODUCT ID
+				    //-----------------------------------------
+				    ExpandAssortmentMeta =
+				        Table.ExpandRecordColumn(
+				            ExpandPositions,
+				            "Assortment",
+				            {"meta"},
+				            {"ProductMeta"}
+				        ),
+				
+				    ExpandProductHref =
+				        Table.ExpandRecordColumn(
+				            ExpandAssortmentMeta,
+				            "ProductMeta",
+				            {"href"},
+				            {"ProductHref"}
+				        ),
+				
+				    ExtractProductID =
+				        Table.TransformColumns(
+				            ExpandProductHref,
+				            {{"ProductHref", each Text.AfterDelimiter(_, "product/"), type text}}
+				        ),
+				
+				    //-----------------------------------------
+				    // CURRENCY FROM ORDER HEADER
+				    //-----------------------------------------
+				    GetOrderCurrency = (OrderID as text) =>
+				        let
+				            Order =
+				                Json.Document(
+				                    Web.Contents(
+				                        "https://api.moysklad.ru",
+				                        [
+				                            RelativePath =
+				                                "api/remap/1.2/entity/customerorder/"
+				                                & OrderID,
+				                            Headers = [ Authorization = Token ]
+				                        ]
+				                    )
+				                ),
+				            CurrencyHref =
+				                Order[rate][currency][meta][href],
+				            CurrencyID =
+				                Text.AfterDelimiter(CurrencyHref, "currency/")
+				        in
+				            CurrencyID,
+				
+				    AddCurrency =
+				        Table.AddColumn(
+				            ExtractProductID,
+				            "CurrencyID",
+				            each GetOrderCurrency([OrderID]),
+				            type text
+				        ),//-----------------------------------------
+				    // PRICE CONVERSION
+				    //-----------------------------------------
+				    ConvertPrice =
+				        Table.TransformColumns(
+				            AddCurrency,
+				            {{"PriceRaw", each _ / 100, type number}}
+				        ),
+				
+				    AddLineAmount =
+				        Table.AddColumn(
+				            ConvertPrice,
+				            "LineAmount",
+				            each [Quantity] * [PriceRaw],
+				            type number
+				        ),
+				
+				    //-----------------------------------------
+				    // FINAL
+				    //-----------------------------------------
+				    Final =
+				        Table.SelectColumns(
+				            AddLineAmount,
+				            {
+				                "OrderID",
+				                "ProductHref",
+				                "Quantity",
+				                "PriceRaw",
+				                "CurrencyID",
+				                "LineAmount"
+				            }
+				        ),
+				
+				    Rename =
+				        Table.RenameColumns(
+				            Final,
+				            {
+				                {"ProductHref", "ProductID"},
+				                {"PriceRaw", "UnitPrice"}
+				            }
+				        ),
+				        USD_Rate = 12500,
+				
+				Added_UnitPrice_USD =
+				    Table.AddColumn(
+				        Rename,
+				        "UnitPrice_USD",
+				        each
+				            if [CurrencyID] = "42616812-e3fe-11ec-0a80-04b5002e0601"
+				            then [UnitPrice]
+				            else [UnitPrice] / USD_Rate,
+				        type number
+				    ),
+				
+				Added_LineAmount_USD =
+				    Table.AddColumn(
+				        Added_UnitPrice_USD,
+				        "LineAmount_USD",
+				        each [Quantity] * [UnitPrice_USD],
+				        type number
+				    ),
+				    #"Removed Other Columns" = Table.SelectColumns(Added_LineAmount_USD,{"OrderID", "ProductID", "Quantity", "UnitPrice", "CurrencyID", "LineAmount", "UnitPrice_USD"})
+				
+				
+				in
+				    #"Removed Other Columns"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

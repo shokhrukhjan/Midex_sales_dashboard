@@ -1,0 +1,119 @@
+table 'Dim Employees'
+	lineageTag: e55673c1-834f-4473-bccd-f762b08154fe
+
+	column EmployeeID
+		dataType: string
+		lineageTag: f187d221-d1c6-4c5b-8b4c-3e5a11504802
+		summarizeBy: none
+		sourceColumn: EmployeeID
+
+		annotation SummarizationSetBy = Automatic
+
+	column ManagerName
+		dataType: string
+		lineageTag: f0e2ba56-94e4-4a4e-82da-72442feeb51f
+		summarizeBy: none
+		sourceColumn: ManagerName
+
+		annotation SummarizationSetBy = Automatic
+
+	column Email
+		dataType: string
+		lineageTag: cd1b2192-6829-4352-a67e-c93ffef6967f
+		summarizeBy: none
+		sourceColumn: Email
+
+		annotation SummarizationSetBy = Automatic
+
+	column IsArchived
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: 4589d828-252f-4184-8d32-48b9112bebe2
+		summarizeBy: none
+		sourceColumn: IsArchived
+
+		annotation SummarizationSetBy = Automatic
+
+	column CreatedDate
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: f8fafa8b-9e84-4e88-a8a0-925756c84a6a
+		summarizeBy: none
+		sourceColumn: CreatedDate
+
+		annotation SummarizationSetBy = Automatic
+
+	column ExternalCode
+		dataType: string
+		lineageTag: 39e1274c-9d09-4638-b9c1-e14a90b6b14d
+		summarizeBy: none
+		sourceColumn: ExternalCode
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Dim Employees' = m
+		mode: import
+		source =
+				let
+				    Limit = 1000,
+				
+				    GetPage = (offset as number) =>
+				        Json.Document(
+				            Web.Contents(
+				                "https://api.moysklad.ru",
+				                [
+				                    RelativePath =
+				                        "api/remap/1.2/entity/employee?limit="
+				                        & Text.From(Limit)
+				                        & "&offset="
+				                        & Text.From(offset),
+				                    Headers = [
+				                        Authorization = "Bearer 2297a1646c10f892e749da87f1c58d64b442f688"
+				                    ]
+				                ]
+				            )
+				        ),
+				
+				    FirstPage = GetPage(0),
+				    Total = FirstPage[meta][size],
+				
+				    Offsets = List.Generate(
+				        () => 0,
+				        each _ < Total,
+				        each _ + Limit
+				    ),
+				
+				    Pages = List.Transform(Offsets, each GetPage(_)[rows]),
+				    Combined = List.Combine(Pages),
+				
+				    ToTable = Table.FromList(Combined, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+				
+				    Expanded = Table.ExpandRecordColumn(
+				        ToTable,
+				        "Column1",
+				        {"id", "name", "email", "archived", "created", "externalCode"},
+				        {"ManagerID", "ManagerName", "Email", "IsArchived", "CreatedDate", "ExternalCode"}
+				    ),
+				
+				    ChangedType = Table.TransformColumnTypes(
+				        Expanded,
+				        {
+				            {"ManagerID", type text},
+				            {"ManagerName", type text},
+				            {"Email", type text},
+				            {"IsArchived", type logical},
+				            {"CreatedDate", type datetime},
+				            {"ExternalCode", type text}
+				        }
+				    ),
+				
+				    ActiveManagers = Table.SelectRows(ChangedType, each [IsArchived] <> true),
+				    #"Renamed Columns" = Table.RenameColumns(ActiveManagers,{{"ManagerID", "EmployeeID"}})
+				
+				in
+				    #"Renamed Columns"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,174 @@
+table 'Fact Orders'
+	lineageTag: 3b8ee5b5-942d-4e18-8f5c-9d04e9043834
+
+	column OrderID
+		dataType: string
+		lineageTag: a36c94f8-870f-4b38-b7b7-401e59bd592e
+		summarizeBy: none
+		sourceColumn: OrderID
+
+		annotation SummarizationSetBy = Automatic
+
+	column AccountID
+		dataType: string
+		lineageTag: 778c0ef6-be5f-4b2a-9ad1-8a0f34a65102
+		summarizeBy: none
+		sourceColumn: AccountID
+
+		annotation SummarizationSetBy = Automatic
+
+	column EmployeeID
+		dataType: string
+		lineageTag: b15f19e9-3535-430f-91c3-f3cb585f05b9
+		summarizeBy: none
+		sourceColumn: EmployeeID
+
+		annotation SummarizationSetBy = Automatic
+
+	column OrderNumber
+		dataType: string
+		lineageTag: 89fc75f6-0bd7-4a14-b388-31b2b715cb3f
+		summarizeBy: none
+		sourceColumn: OrderNumber
+
+		annotation SummarizationSetBy = Automatic
+
+	column OrderDate
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: f52cc9de-932f-4d3d-b178-31b25275aae0
+		summarizeBy: none
+		sourceColumn: OrderDate
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column applicable
+		dataType: string
+		lineageTag: 8e8c516b-590a-487d-ad56-03053a646aa0
+		summarizeBy: none
+		sourceColumn: applicable
+
+		annotation SummarizationSetBy = Automatic
+
+	column CurrencyID
+		dataType: string
+		lineageTag: a95a5d76-a859-462c-9d7b-7123b56a2105
+		summarizeBy: none
+		sourceColumn: CurrencyID
+
+		annotation SummarizationSetBy = Automatic
+
+	column Sum
+		dataType: string
+		lineageTag: 8c36d439-4c18-4e32-9935-f43c0ca3851b
+		summarizeBy: none
+		sourceColumn: Sum
+
+		annotation SummarizationSetBy = Automatic
+
+	column StoreID
+		dataType: string
+		lineageTag: 4de59a2a-af46-4ea5-81e5-7d0f17f83f3a
+		summarizeBy: none
+		sourceColumn: StoreID
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerID
+		dataType: string
+		lineageTag: 0c4b5fc7-0972-48e5-a729-08390d0aac58
+		summarizeBy: none
+		sourceColumn: CustomerID
+
+		annotation SummarizationSetBy = Automatic
+
+	column Sales_USD
+		dataType: double
+		lineageTag: da006169-7abe-4c9e-9593-0f81048c50cc
+		summarizeBy: sum
+		sourceColumn: Sales_USD
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition 'Fact Orders' = m
+		mode: import
+		source = ```
+				let
+				    Limit = 1000,
+				
+				    GetPage = (offset as number) =>
+				        Json.Document(
+				            Web.Contents(
+				                "https://api.moysklad.ru",
+				                [
+				                    RelativePath =
+				                        "api/remap/1.2/entity/customerorder?limit="
+				                        & Text.From(Limit)
+				                        & "&offset="
+				                        & Text.From(offset),
+				                    Headers = [
+				                        Authorization = "Bearer 2297a1646c10f892e749da87f1c58d64b442f688" 
+				                    ]
+				                ]
+				            )
+				        ),
+				
+				    FirstPage = GetPage(0),
+				    Total = FirstPage[meta][size],
+				
+				    Offsets = List.Generate(
+				        () => 0,
+				        each _ < Total,
+				        each _ + Limit
+				    ),
+				
+				    Pages = List.Transform(Offsets, each GetPage(_)[rows]),
+				    Combined = List.Combine(Pages),
+				
+				    ToTable = Table.FromList(Combined, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+				    #"Expanded Column1" = Table.ExpandRecordColumn(ToTable, "Column1", {"id", "accountId", "owner", "name", "moment", "applicable", "rate", "sum", "store", "agent", "organization"}, {"Column1.id", "Column1.accountId", "Column1.owner", "Column1.name", "Column1.moment", "Column1.applicable", "Column1.rate", "Column1.sum", "Column1.store", "Column1.agent", "Column1.organization"}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Expanded Column1",{{"Column1.id", "OrderID"}, {"Column1.accountId", "AccountID"}}),
+				    #"Expanded Column1.owner" = Table.ExpandRecordColumn(#"Renamed Columns", "Column1.owner", {"meta"}, {"Column1.owner.meta"}),
+				    #"Expanded Column1.owner.meta" = Table.ExpandRecordColumn(#"Expanded Column1.owner", "Column1.owner.meta", {"href"}, {"Column1.owner.meta.href"}),
+				    #"Extracted Text After Delimiter" = Table.TransformColumns(#"Expanded Column1.owner.meta", {{"Column1.owner.meta.href", each Text.AfterDelimiter(_, "employee/"), type text}}),
+				    #"Renamed Columns1" = Table.RenameColumns(#"Extracted Text After Delimiter",{{"Column1.name", "OrderNumber"}}),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Renamed Columns1",{{"Column1.moment", type datetime}}),
+				    #"Renamed Columns2" = Table.RenameColumns(#"Changed Type",{{"Column1.moment", "OrderDate"}}),
+				    #"Expanded Column1.rate" = Table.ExpandRecordColumn(#"Renamed Columns2", "Column1.rate", {"currency"}, {"Column1.rate.currency"}),
+				    #"Expanded Column1.rate.currency" = Table.ExpandRecordColumn(#"Expanded Column1.rate", "Column1.rate.currency", {"meta"}, {"Column1.rate.currency.meta"}),
+				    #"Expanded Column1.rate.currency.meta" = Table.ExpandRecordColumn(#"Expanded Column1.rate.currency", "Column1.rate.currency.meta", {"href"}, {"Column1.rate.currency.meta.href"}),
+				    #"Extracted Text After Delimiter1" = Table.TransformColumns(#"Expanded Column1.rate.currency.meta", {{"Column1.rate.currency.meta.href", each Text.AfterDelimiter(_, "currency/"), type text}}),
+				    #"Renamed Columns3" = Table.RenameColumns(#"Extracted Text After Delimiter1",{{"Column1.rate.currency.meta.href", "CurrencyID"}, {"Column1.sum", "Sum"}}),
+				    #"Expanded Column1.store" = Table.ExpandRecordColumn(#"Renamed Columns3", "Column1.store", {"meta"}, {"Column1.store.meta"}),
+				    #"Expanded Column1.store.meta" = Table.ExpandRecordColumn(#"Expanded Column1.store", "Column1.store.meta", {"href"}, {"Column1.store.meta.href"}),
+				    #"Extracted Text After Delimiter2" = Table.TransformColumns(#"Expanded Column1.store.meta", {{"Column1.store.meta.href", each Text.AfterDelimiter(_, "store/"), type text}}),
+				    #"Renamed Columns4" = Table.RenameColumns(#"Extracted Text After Delimiter2",{{"Column1.store.meta.href", "StoreID"}}),
+				    #"Expanded Column1.agent" = Table.ExpandRecordColumn(#"Renamed Columns4", "Column1.agent", {"meta"}, {"Column1.agent.meta"}),
+				    #"Expanded Column1.agent.meta" = Table.ExpandRecordColumn(#"Expanded Column1.agent", "Column1.agent.meta", {"href"}, {"Column1.agent.meta.href"}),#"Extracted Text After Delimiter3" = Table.TransformColumns(#"Expanded Column1.agent.meta", {{"Column1.agent.meta.href", each Text.AfterDelimiter(_, "counterparty/"), type text}}),
+				    #"Removed Other Columns" = Table.SelectColumns(#"Extracted Text After Delimiter3",{"OrderID", "AccountID", "Column1.owner.meta.href", "OrderNumber", "OrderDate", "Column1.applicable", "CurrencyID", "Sum", "StoreID", "Column1.agent.meta.href"}),
+				    #"Renamed Columns5" = Table.RenameColumns(#"Removed Other Columns",{{"Column1.agent.meta.href", "CustomerID"}, {"Column1.applicable", "applicable"}}),
+				    #"Added_SalesUSD" = Table.AddColumn(
+				        #"Renamed Columns5",
+				        "Sales_USD",
+				        each 
+				            if [CurrencyID] = "42616812-e3fe-11ec-0a80-04b5002e0601"
+				            then [Sum] / 100
+				            else ([Sum] / 100) / 12500,
+				        type number
+				    ),
+				    #"Changed Type1" = Table.TransformColumnTypes(Added_SalesUSD,{{"Sales_USD", type number}}),
+				    #"Renamed Columns6" = Table.RenameColumns(#"Changed Type1",{{"Column1.owner.meta.href", "EmployeeID"}}),
+				    #"Changed Type2" = Table.TransformColumnTypes(#"Renamed Columns6",{{"OrderDate", type date}})
+				
+				in
+				    #"Changed Type2"
+				```
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

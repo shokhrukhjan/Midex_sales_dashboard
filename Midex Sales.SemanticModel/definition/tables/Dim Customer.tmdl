@@ -1,0 +1,155 @@
+table 'Dim Customer'
+	lineageTag: abef17b0-9eb5-4d73-97b8-4ce1ec19f2e4
+
+	column CustomerID
+		dataType: string
+		lineageTag: f21624dd-654a-436b-98d7-227abf878b8a
+		summarizeBy: none
+		sourceColumn: CustomerID
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerName
+		dataType: string
+		lineageTag: f5f761c6-592d-45fd-9663-ac396b5911ea
+		summarizeBy: none
+		sourceColumn: CustomerName
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerCode
+		dataType: string
+		lineageTag: 905d0dd5-2018-461c-85a0-6c2dacbcda70
+		summarizeBy: none
+		sourceColumn: CustomerCode
+
+		annotation SummarizationSetBy = Automatic
+
+	column Email
+		dataType: string
+		lineageTag: fd3a1e06-9267-4e38-aeaf-d87c5730f59d
+		summarizeBy: none
+		sourceColumn: Email
+
+		annotation SummarizationSetBy = Automatic
+
+	column Phone
+		dataType: string
+		lineageTag: 6aa0349f-b9c7-4b2a-9c68-4a9da8b8b7f3
+		summarizeBy: none
+		sourceColumn: Phone
+
+		annotation SummarizationSetBy = Automatic
+
+	column Address
+		dataType: string
+		lineageTag: 625f3e8c-edf6-4fa1-915c-dbd98fc9c6c3
+		summarizeBy: none
+		sourceColumn: Address
+
+		annotation SummarizationSetBy = Automatic
+
+	column IsArchived
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: 1089467b-2818-4bd1-85ab-70ed3c373690
+		summarizeBy: none
+		sourceColumn: IsArchived
+
+		annotation SummarizationSetBy = Automatic
+
+	column CreatedDate
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: d6863900-bb36-4ef3-9461-91534b368a95
+		summarizeBy: none
+		sourceColumn: CreatedDate
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Dim Customer' = m
+		mode: import
+		source =
+				let
+				    Limit = 1000,
+				
+				    GetPage = (offset as number) =>
+				        Json.Document(
+				            Web.Contents(
+				                "https://api.moysklad.ru",
+				                [
+				                    RelativePath =
+				                        "api/remap/1.2/entity/counterparty?limit="
+				                        & Text.From(Limit)
+				                        & "&offset="
+				                        & Text.From(offset),
+				                    Headers = [
+				                        Authorization = "Bearer 2297a1646c10f892e749da87f1c58d64b442f688"
+				                    ]
+				                ]
+				            )
+				        ),
+				
+				    FirstPage = GetPage(0),
+				    Total = FirstPage[meta][size],
+				
+				    Offsets = List.Generate(
+				        () => 0,
+				        each _ < Total,
+				        each _ + Limit
+				    ),
+				
+				    Pages = List.Transform(Offsets, each GetPage(_)[rows]),
+				    Combined = List.Combine(Pages),
+				
+				    ToTable = Table.FromList(Combined, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+				
+				    Expanded = Table.ExpandRecordColumn(
+				        ToTable,
+				        "Column1",
+				        {
+				            "id",
+				            "name",
+				            "code",
+				            "email",
+				            "phone",
+				            "actualAddress",
+				            "archived",
+				            "created"
+				        },
+				        {
+				            "CustomerID",
+				            "CustomerName",
+				            "CustomerCode",
+				            "Email",
+				            "Phone",
+				            "Address",
+				            "IsArchived",
+				            "CreatedDate"
+				        }
+				    ),
+				
+				    ChangedType = Table.TransformColumnTypes(
+				        Expanded,
+				        {
+				            {"CustomerID", type text},
+				            {"CustomerName", type text},
+				            {"CustomerCode", type text},
+				            {"Email", type text},
+				            {"Phone", type text},
+				            {"Address", type text},
+				            {"IsArchived", type logical},
+				            {"CreatedDate", type datetime}
+				        }
+				    ),
+				
+				    ActiveCustomers = Table.SelectRows(ChangedType, each [IsArchived] <> true),
+				    #"Replaced Value" = Table.ReplaceValue(ActiveCustomers," ","",Replacer.ReplaceText,{"Phone"}),
+				    #"Extracted Last Characters" = Table.TransformColumns(#"Replaced Value", {{"Phone", each Text.End(_, 9), type text}})
+				in
+				    #"Extracted Last Characters"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

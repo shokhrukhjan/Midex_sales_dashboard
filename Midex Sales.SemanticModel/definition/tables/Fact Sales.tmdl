@@ -1,0 +1,311 @@
+table 'Fact Sales'
+	lineageTag: 598d649b-3ae2-4d0c-8ad9-973d91d63fb4
+
+	column ShipmentID
+		dataType: string
+		lineageTag: e5f87b31-e606-4f17-8904-e67848ccab0a
+		summarizeBy: none
+		sourceColumn: ShipmentID
+
+		annotation SummarizationSetBy = Automatic
+
+	column ShipmentNumber
+		dataType: string
+		lineageTag: 7d65a1d1-acf0-4427-bc65-27cae0a6bf6c
+		summarizeBy: none
+		sourceColumn: ShipmentNumber
+
+		annotation SummarizationSetBy = Automatic
+
+	column ShipmentDate
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 1ce87bcd-4fb2-4d14-8b52-3a870b3df3e6
+		summarizeBy: none
+		sourceColumn: ShipmentDate
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Sum
+		dataType: double
+		lineageTag: a1a46821-2a23-4a5a-9b8d-336a05c4a348
+		summarizeBy: sum
+		sourceColumn: Sum
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column Paid
+		dataType: double
+		lineageTag: a833a7d4-0ca7-4386-b839-60832ef79c7c
+		summarizeBy: sum
+		sourceColumn: Paid
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column StoreID
+		dataType: string
+		lineageTag: 4374099a-b2cb-48a6-8b4c-4d0874ee9b44
+		summarizeBy: none
+		sourceColumn: StoreID
+
+		annotation SummarizationSetBy = Automatic
+
+	column CustomerID
+		dataType: string
+		lineageTag: e17c438b-484c-4159-8145-d9b6ccfbd831
+		summarizeBy: none
+		sourceColumn: CustomerID
+
+		annotation SummarizationSetBy = Automatic
+
+	column EmployeeID
+		dataType: string
+		lineageTag: 8af422e3-ea5b-4f7c-a5e7-297a3c3023f6
+		summarizeBy: none
+		sourceColumn: EmployeeID
+
+		annotation SummarizationSetBy = Automatic
+
+	column CurrencyID
+		dataType: string
+		lineageTag: 473448e0-08c1-4f31-bf8a-8df00904ab48
+		summarizeBy: none
+		sourceColumn: CurrencyID
+
+		annotation SummarizationSetBy = Automatic
+
+	column Unpaid
+		dataType: double
+		lineageTag: c058da00-75c3-4e6f-b6df-0f733ddedc83
+		summarizeBy: sum
+		sourceColumn: Unpaid
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column Sum_USD
+		dataType: double
+		lineageTag: 7223a42a-9433-4593-aea5-318a3483b598
+		summarizeBy: sum
+		sourceColumn: Sum_USD
+
+		changedProperty = DataType
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column Paid_USD
+		dataType: double
+		lineageTag: b207bca8-500c-4f7a-a29d-0af32a133a37
+		summarizeBy: sum
+		sourceColumn: Paid_USD
+
+		changedProperty = DataType
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column Unpaid_USD
+		dataType: double
+		lineageTag: 84e4defe-8b5d-4260-974f-080bf6609bc6
+		summarizeBy: sum
+		sourceColumn: Unpaid_USD
+
+		changedProperty = DataType
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition 'Fact Sales' = m
+		mode: import
+		source = ```
+				let
+				    Limit = 1000,
+				
+				    GetPage = (offset as number) =>
+				        Json.Document(
+				            Web.Contents(
+				                "https://api.moysklad.ru",
+				                [
+				                    RelativePath =
+				                        "api/remap/1.2/entity/demand?limit="
+				                        & Text.From(Limit)
+				                        & "&offset="
+				                        & Text.From(offset),
+				
+				                    Headers = [
+				                        Authorization = "Bearer 2297a1646c10f892e749da87f1c58d64b442f688"
+				                    ]
+				                ]
+				            )
+				        ),
+				
+				    FirstPage = GetPage(0),
+				    Total = FirstPage[meta][size],
+				
+				    Offsets =
+				        List.Generate(
+				            () => 0,
+				            each _ < Total,
+				            each _ + Limit
+				        ),
+				
+				    Pages =
+				        List.Transform(
+				            Offsets,
+				            each GetPage(_)[rows]
+				        ),
+				
+				    Combined = List.Combine(Pages),
+				
+				    ToTable =
+				        Table.FromList(
+				            Combined,
+				            Splitter.SplitByNothing(),
+				            null,
+				            null,
+				            ExtraValues.Error
+				        ),
+				
+				    Expanded =
+				        Table.ExpandRecordColumn(
+				            ToTable,
+				            "Column1",
+				            {"id","name","moment","sum","payedSum","store","agent","owner","rate"},
+				            {"ShipmentID","ShipmentNumber","ShipmentDate","Sum","Paid","Store","Customer","Employee","rate"}
+				        ),
+				
+				    ExpandRate =
+				        Table.ExpandRecordColumn(
+				            Expanded,
+				            "rate",
+				            {"currency"},
+				            {"currency"}
+				        ),
+				
+				    ExpandCurrency =
+				        Table.ExpandRecordColumn(
+				            ExpandRate,
+				            "currency",
+				            {"meta"},
+				            {"currency.meta"}
+				        ),
+				
+				    ExpandCurrencyMeta =
+				        Table.ExpandRecordColumn(
+				            ExpandCurrency,
+				            "currency.meta",
+				            {"href"},
+				            {"CurrencyLink"}
+				        ),
+				
+				    ExtractCurrencyID =
+				        Table.TransformColumns(
+				            ExpandCurrencyMeta,
+				            {{"CurrencyLink", each Text.AfterDelimiter(_, "currency/"), type text}}
+				        ),
+				
+				    ExpandStore =
+				        Table.ExpandRecordColumn(
+				            ExtractCurrencyID,
+				            "Store",
+				            {"meta"},
+				            {"Store.meta"}
+				        ),
+				
+				    ExpandStoreMeta =
+				        Table.ExpandRecordColumn(
+				            ExpandStore,
+				            "Store.meta",
+				            {"href"},
+				            {"StoreLink"}
+				        ),
+				
+				    ExpandCustomer =
+				        Table.ExpandRecordColumn(
+				            ExpandStoreMeta,
+				            "Customer",
+				            {"meta"},
+				            {"Customer.meta"}
+				        ),
+				
+				    ExpandCustomerMeta =
+				        Table.ExpandRecordColumn(
+				            ExpandCustomer,
+				            "Customer.meta",
+				            {"href"},
+				            {"CustomerLink"}
+				        ),
+				
+				    ExpandEmployee =
+				        Table.ExpandRecordColumn(
+				            ExpandCustomerMeta,
+				            "Employee",
+				            {"meta"},
+				            {"Employee.meta"}
+				        ),
+				
+				    ExpandEmployeeMeta =
+				        Table.ExpandRecordColumn(
+				            ExpandEmployee,
+				            "Employee.meta",
+				            {"href"},
+				            {"EmployeeLink"}
+				        ),
+				
+				    ConvertAmounts =
+				        Table.TransformColumns(
+				            ExpandEmployeeMeta,
+				            {
+				                {"Sum", each _ / 100, type number},
+				                {"Paid", each _ / 100, type number}
+				            }
+				        ),
+				
+				    AddedUnpaid =
+				        Table.AddColumn(
+				            ConvertAmounts,
+				            "Unpaid",
+				            each [Sum] - [Paid],
+				            type number
+				        ),ChangedType =
+				        Table.TransformColumnTypes(
+				            AddedUnpaid,
+				            {{"ShipmentDate", type datetime}}
+				        ),
+				    #"Extracted Text After Delimiter" = Table.TransformColumns(ChangedType, {{"StoreLink", each Text.AfterDelimiter(_, "store/"), type text}}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Extracted Text After Delimiter",{{"StoreLink", "StoreID"}}),
+				    #"Extracted Text After Delimiter1" = Table.TransformColumns(#"Renamed Columns", {{"CustomerLink", each Text.AfterDelimiter(_, "counterparty/"), type text}}),
+				    #"Renamed Columns1" = Table.RenameColumns(#"Extracted Text After Delimiter1",{{"CustomerLink", "CustomerID"}}),
+				    #"Extracted Text After Delimiter2" = Table.TransformColumns(#"Renamed Columns1", {{"EmployeeLink", each Text.AfterDelimiter(_, "employee/"), type text}}),
+				    #"Renamed Columns2" = Table.RenameColumns(#"Extracted Text After Delimiter2",{{"EmployeeLink", "EmployeeID"}, {"CurrencyLink", "CurrencyID"}}),
+				    #"Added Custom" = Table.AddColumn(#"Renamed Columns2", "Sum_USD", each if [CurrencyID] = "42616812-e3fe-11ec-0a80-04b5002e0601" 
+				then [Sum] 
+				else [Sum] / 12500),
+				    #"Added Custom1" = Table.AddColumn(#"Added Custom", "Unpaid_USD", each if [CurrencyID] = "42616812-e3fe-11ec-0a80-04b5002e0601" 
+				then [Unpaid] 
+				else [Unpaid] / 12200),
+				    #"Added Custom2" = Table.AddColumn(#"Added Custom1", "Paid_USD", each if [CurrencyID] = "42616812-e3fe-11ec-0a80-04b5002e0601" 
+				then [Paid] 
+				else [Paid] / 12200),
+				    #"Reordered Columns" = Table.ReorderColumns(#"Added Custom2",{"ShipmentID", "ShipmentNumber", "ShipmentDate", "Sum", "Paid", "StoreID", "CustomerID", "EmployeeID", "CurrencyID", "Unpaid", "Sum_USD", "Paid_USD", "Unpaid_USD"}),
+				    #"Extracted Date" = Table.TransformColumns(#"Reordered Columns",{{"ShipmentDate", DateTime.Date, type date}}),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Extracted Date",{{"ShipmentDate", type date}})
+				in
+				    #"Changed Type"
+				```
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

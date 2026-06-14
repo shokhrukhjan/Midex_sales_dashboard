@@ -1,0 +1,257 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "name": "1b4e1100a37350d20002",
+  "position": {
+    "x": 785.92,
+    "y": 471.04,
+    "z": 16000,
+    "height": 264.96,
+    "width": 546.56,
+    "tabOrder": 16000
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Dim Product"
+                    }
+                  },
+                  "Property": "ProductName"
+                }
+              },
+              "queryRef": "Dim Product.ProductName",
+              "nativeQueryRef": "ProductName",
+              "displayName": "Наим. товара"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fact Store"
+                    }
+                  },
+                  "Property": "Available_Stock"
+                }
+              },
+              "queryRef": "Fact Store.Available_Stock",
+              "nativeQueryRef": "Available_Stock",
+              "displayName": "Остаток"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Store Page measures"
+                    }
+                  },
+                  "Property": "Sales over the last 90 days."
+                }
+              },
+              "queryRef": "Store Page measures.Sales over the last 90 days.",
+              "nativeQueryRef": "Продажи 90 дн.",
+              "displayName": "Продажи 90 дн."
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Store Page measures"
+                    }
+                  },
+                  "Property": "Run Rate (days)"
+                }
+              },
+              "queryRef": "Store Page measures.Run Rate (Kun)",
+              "nativeQueryRef": "Запас на (дней)",
+              "displayName": "Запас на (дней)"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Store Page measures"
+                  }
+                },
+                "Property": "Sales over the last 90 days."
+              }
+            },
+            "direction": "Descending"
+          }
+        ]
+      }
+    },
+    "objects": {
+      "columnWidth": [
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "267.9586115891766D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Dim Product.ProductName"
+          }
+        },
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "70.44D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Store Page measures.Run Rate (Kun)"
+          }
+        },
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "82.76879307578204D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Store Page measures.Sales over the last 90 days."
+          }
+        },
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "64.99999728445403D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Fact Store.Available_Stock"
+          }
+        }
+      ],
+      "total": [
+        {
+          "properties": {
+            "totals": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "columnHeaders": [
+        {
+          "properties": {}
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "border": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "radius": {
+              "expr": {
+                "Literal": {
+                  "Value": "25D"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "2a6772c40a7a0c202d1c",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Store Page measures"
+              }
+            },
+            "Property": "Sales over the last 90 days."
+          }
+        },
+        "type": "Advanced",
+        "filter": {
+          "Version": 2,
+          "From": [
+            {
+              "Name": "s",
+              "Entity": "Store Page measures",
+              "Type": 0
+            }
+          ],
+          "Where": [
+            {
+              "Condition": {
+                "Not": {
+                  "Expression": {
+                    "Comparison": {
+                      "ComparisonKind": 0,
+                      "Left": {
+                        "Measure": {
+                          "Expression": {
+                            "SourceRef": {
+                              "Source": "s"
+                            }
+                          },
+                          "Property": "Sales over the last 90 days."
+                        }
+                      },
+                      "Right": {
+                        "Literal": {
+                          "Value": "null"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

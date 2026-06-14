@@ -1,0 +1,589 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "name": "021aa2c6cb56c4177c83",
+  "position": {
+    "x": 192,
+    "y": 158.47619047619048,
+    "z": 10000,
+    "height": 577.52380952380952,
+    "width": 644.57142857142856,
+    "tabOrder": 10000
+  },
+  "visual": {
+    "visualType": "BulletChart832EC06300814F26921DEFC2DE8606BE",
+    "query": {
+      "queryState": {
+        "category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Dim Store"
+                    }
+                  },
+                  "Property": "StoreName"
+                }
+              },
+              "queryRef": "Dim Store.StoreName",
+              "nativeQueryRef": "StoreName",
+              "active": true
+            }
+          ]
+        },
+        "benchmark": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Main page Measure Table"
+                    }
+                  },
+                  "Property": "Plan Target"
+                }
+              },
+              "queryRef": "Measure Table.Plan Target",
+              "nativeQueryRef": "Plan Target"
+            }
+          ]
+        },
+        "actual": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Main page Measure Table"
+                    }
+                  },
+                  "Property": "Total Sales"
+                }
+              },
+              "queryRef": "Measure Table.Total Sales",
+              "nativeQueryRef": "Total Sales"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Main page Measure Table"
+                  }
+                },
+                "Property": "Total Sales"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "objects": {
+      "license": [
+        {
+          "properties": {
+            "appSourceLicense": {
+              "expr": {
+                "Literal": {
+                  "Value": "'{\"plan\":\"paid\",\"status\":1,\"features\":null,\"unlimitedViewerEnvs\":[]}'"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "xaxis": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "fontColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "ThemeDataColor": {
+                      "ColorId": 1,
+                      "Percent": 0
+                    }
+                  }
+                }
+              }
+            },
+            "xAxisLabel": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "titleenable": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "xAxisReverse": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "yaxisProperty": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "deviationBar": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "deviationValueDisplay": {
+              "expr": {
+                "Literal": {
+                  "Value": "'percentage'"
+                }
+              }
+            },
+            "fontColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "ThemeDataColor": {
+                      "ColorId": 1,
+                      "Percent": 0
+                    }
+                  }
+                }
+              }
+            },
+            "inline": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "dlFontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "11D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "datalabels": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "dlActualValueBullet": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Measure Table.Total Sales"
+          }
+        },
+        {
+          "properties": {
+            "dlBenchmarkValueBullet": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Measure Table.Plan Target"
+          }
+        }
+      ],
+      "numberformat": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "legend": [
+        {
+          "properties": {
+            "legendPositionCombined": {
+              "expr": {
+                "Literal": {
+                  "Value": "'top_center'"
+                }
+              }
+            },
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "exporter": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "isDeviationBar": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "isRanking": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "editor": [
+        {
+          "properties": {
+            "enableCustomSummaryTable": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "benchMark": {
+              "expr": {
+                "Literal": {
+                  "Value": "'{\"Measure Table.Total Sales\":{\"type\":\"measure\",\"measureName\":\"Measure Table.Plan Target\",\"measureValue\":null,\"color\":\"#000\"},\"bulletchartBenchMark1\":{\"markerType\":\"line\",\"markerSize\":8,\"markerLength\":16,\"markerWidth\":4},\"bulletchartBenchMark2\":{\"markerType\":\"line\",\"markerSize\":8,\"markerLength\":20,\"markerWidth\":4}}'"
+                }
+              }
+            },
+            "comparisonBands": {
+              "expr": {
+                "Literal": {
+                  "Value": "'{\"enabled\":true,\"stdSettings\":{\"comparisonQualitativeRange\":false,\"basedOn\":\"percentage\",\"basedOnQC\":\"qualitive\",\"value\":[{\"name\":\"Band 1\",\"color\":\"#999999\",\"value\":14872.7},{\"name\":\"Band 2\",\"color\":\"#b3b3b3\",\"value\":14872.7},{\"name\":\"Band 3\",\"color\":\"#cccccc\",\"value\":19830.2}],\"percentage\":[{\"name\":\"Band 1\",\"color\":\"#e6e6e6\",\"value\":100}],\"displayOption\":\"legend\",\"dlOverlap\":false,\"bandFontSize\":12,\"bandFontColor\":\"#000000\",\"activeLabel\":false,\"fill\":\"#118dff\",\"dlFontSize\":12,\"dlFontWeight\":\"bold\",\"bandOffset\":null,\"bandLabelHorizontalOrientation\":\"top\",\"bandLabelVerticalOrientation\":\"right\",\"band1Color\":\"#999999\",\"band2Color\":\"#b3b3b3\",\"band3Color\":\"#cccccc\",\"band4Color\":\"#e6e6e6\",\"band5Color\":\"#ffffff\",\"actualMeasureName\":\"Measure Table.Total Sales\",\"comparisonBandTooltip\":true,\"comparisonBandTotal\":true,\"comparisonBandLegend\":true,\"bulletTargetPercentage\":false},\"Measure Table.Total Sales\":{\"type\":\"percentage\",\"measure\":[],\"percentage\":[{\"name\":\"Band 1\",\"color\":\"#868686\",\"value\":50},{\"name\":\"Band 2\",\"color\":\"#bfbfbf\",\"value\":75},{\"name\":\"Band 3\",\"color\":\"#ffffff\",\"value\":100}],\"value\":[{\"name\":\"Band 1\",\"color\":\"#999999\",\"value\":14872.7},{\"name\":\"Band 2\",\"color\":\"#b3b3b3\",\"value\":14872.7},{\"name\":\"Band 3\",\"color\":\"#cccccc\",\"value\":19830.2}]},\"isUserChangedProperty\":true}'"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "dataColors": [
+        {
+          "properties": {
+            "valueColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "ThemeDataColor": {
+                      "ColorId": 2,
+                      "Percent": 0
+                    }
+                  }
+                }
+              }
+            },
+            "benchmark1Color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "ThemeDataColor": {
+                      "ColorId": 4,
+                      "Percent": -0.25
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "summaryTable": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "utilityMenuAction": [
+        {
+          "properties": {
+            "ascVar": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "dscVar": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "ascVarPercentage": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "dscVarPercentage": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "noSort": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'% выполнения плана по складам'"
+                }
+              }
+            },
+            "fontFamily": {
+              "expr": {
+                "Literal": {
+                  "Value": "'''Segoe UI Semibold'', wf_segoe-ui_semibold, helvetica, arial, sans-serif'"
+                }
+              }
+            },
+            "alignment": {
+              "expr": {
+                "Literal": {
+                  "Value": "'center'"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "background": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "ThemeDataColor": {
+                      "ColorId": 0,
+                      "Percent": 0
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "border": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "radius": {
+              "expr": {
+                "Literal": {
+                  "Value": "20D"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "7792ea6620cc547af1f0",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "Dim Store"
+              }
+            },
+            "Property": "StoreName"
+          }
+        },
+        "type": "Categorical",
+        "filter": {
+          "Version": 2,
+          "From": [
+            {
+              "Name": "d",
+              "Entity": "Dim Store",
+              "Type": 0
+            }
+          ],
+          "Where": [
+            {
+              "Condition": {
+                "Not": {
+                  "Expression": {
+                    "In": {
+                      "Expressions": [
+                        {
+                          "Column": {
+                            "Expression": {
+                              "SourceRef": {
+                                "Source": "d"
+                              }
+                            },
+                            "Property": "StoreName"
+                          }
+                        }
+                      ],
+                      "Values": [
+                        [
+                          {
+                            "Literal": {
+                              "Value": "'Термез'"
+                            }
+                          }
+                        ],
+                        [
+                          {
+                            "Literal": {
+                              "Value": "'Тошкент Офис'"
+                            }
+                          }
+                        ]
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "objects": {
+          "general": [
+            {
+              "properties": {
+                "isInvertedSelectionMode": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "true"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
